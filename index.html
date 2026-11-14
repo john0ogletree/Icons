@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icons Viewer</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            /* Fluid padding based on screen size: tight on watches, generous on TVs */
+            padding: clamp(0.5rem, 3vw, 3rem);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: clamp(0.5rem, 1.5vw, 1rem);
+            margin-bottom: clamp(1rem, 3vw, 2.5rem);
+        }
+
+        h2 {
+            font-weight: 400;
+            margin: 0;
+            font-size: clamp(0.9rem, 2vw, 1.75rem);
+            color: var(--text-muted);
+        }
+
+        .counter {
+            font-size: clamp(0.7rem, 1.5vw, 1rem);
+            color: var(--text-muted);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.25rem 0.6rem;
+            border-radius: 99px;
+        }
+
+        /* Fluid grid: shrinks gracefully for watches, expands smoothly for ultrawide / TVs */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(clamp(70px, 12vw, 140px), 1fr));
+            gap: clamp(0.4rem, 1.5vw, 1.25rem);
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: clamp(4px, 1vw, 10px);
+            padding: clamp(0.5rem, 1.5vw, 1.25rem);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--text-muted);
+        }
+
+        .preview {
+            width: clamp(24px, 6vw, 64px);
+            height: clamp(24px, 6vw, 64px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .preview svg {
+            width: 100%;
+            height: 100%;
+            fill: currentColor;
+            max-height: 100%;
+            max-width: 100%;
+        }
+
+        .name {
+            font-size: clamp(0.55rem, 1.1vw, 0.8rem);
+            color: var(--text-muted);
+            margin-top: clamp(0.4rem, 1vw, 0.8rem);
+            text-align: center;
+            word-break: break-all;
+            max-width: 100%;
+            line-height: 1.2;
+        }
+
+        .loading {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: clamp(0.8rem, 1.5vw, 1.2rem);
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem 0;
+        }
+
+        /* TV & Large Display Optimization: Higher contrast focus states if navigated via remote/keyboard */
+        @media (hover: none) {
+            .card:active {
+                border-color: var(--text-main);
+                transform: scale(0.96);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>john0ogletree / Icons</h2>
+        <div id="counter" class="counter"></div>
+    </header>
+
+    <div id="grid" class="grid">
+        <div class="loading">Loading icons...</div>
+    </div>
+
+    <script>
+        async function loadIcons() {
+            const grid = document.getElementById('grid');
+            const counter = document.getElementById('counter');
+            
+            try {
+                const res = await fetch('https://api.github.com/repos/john0ogletree/Icons/git/trees/main?recursive=1');
+                if (!res.ok) throw new Error('Failed to fetch repository tree');
+                
+                const data = await res.json();
+                const svgFiles = data.tree.filter(item => item.type === 'blob' && item.path.toLowerCase().endsWith('.svg'));
+
+                grid.innerHTML = '';
+                counter.textContent = `${svgFiles.length} icons`;
+
+                if (svgFiles.length === 0) {
+                    grid.innerHTML = '<div class="loading">No SVG files found.</div>';
+                    return;
+                }
+
+                for (const file of svgFiles) {
+                    const rawRes = await fetch(`https://raw.githubusercontent.com/john0ogletree/Icons/main/${file.path}`);
+                    const svgText = await rawRes.text();
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    const fileName = file.path.split('/').pop().replace('.svg', '');
+
+                    card.innerHTML = `
+                        <div class="preview">${svgText}</div>
+                        <div class="name" title="${file.path}">${fileName}</div>
+                    `;
+                    grid.appendChild(card);
+                }
+            } catch (err) {
+                grid.innerHTML = `<div class="loading">Error loading icons: ${err.message}</div>`;
+                counter.textContent = 'Error';
+            }
+        }
+
+        loadIcons();
+    </script>
+</body>
+</html>
